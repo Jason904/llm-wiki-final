@@ -28,30 +28,34 @@
 
 ## 目录结构
 
+用户可见（Obsidian File Explorer 只有这 4 行）：
+
 ```
 my-wiki/
+├── index.md                     # 知识库索引（前门，按 clusters 分组）
+├── log.md                       # 事件时间线（append-only，grep 友好）
 ├── raw/                         # 原始素材（LLM 只读）
 │   ├── articles/
 │   ├── papers/
-│   ├── chats/
-│   └── assets/                  # 附件存放，不参与 ingest
-├── wiki/                        # LLM 生成的知识页面
-│   ├── _index.md                # 按 cluster 分组的自动索引（Obsidian 可 pin）
-│   ├── {Concept-Pages}.md       # 概念页（page_type: concept）
-│   └── {Synthesis-Pages}.md     # Query 回写的综合页（page_type: synthesis）
-├── _digest/                     # Ingest 变更报告
-│   └── latest.md                # Obsidian pin
-├── _proposals/                  # Ingest propose 产物（draft → applied）
-├── _lint/
-│   └── latest-report.md         # Obsidian pin
-├── _log.md                      # 事件时间线（append-only，grep 友好）
-├── .claude/
-│   ├── CLAUDE.md                # 系统规则
-│   └── commands/
-├── templates/                   # 参考模板
-├── docs/
+│   └── chats/
+└── wiki/                        # 知识页面（LLM 生成和维护）
+    ├── {Concept-Pages}.md       # 概念页（page_type: concept）
+    └── {Synthesis-Pages}.md     # Query 回写的综合页（page_type: synthesis）
+```
+
+系统层（`. ` 前缀，Obsidian 默认隐藏）：
+
+```
+my-wiki/
+├── .claude/                     # 系统规则 + 命令
+├── .templates/                  # 参考模板
+├── .digest/                     # Ingest 变更报告
+├── .proposals/                  # Ingest propose 产物
+├── .lint/                       # 体检报告
 └── .git/
 ```
+
+> **Obsidian Graph View** 使用 filter `path:wiki` 只展示知识网络。园丁工具全部在视野之外。
 
 ---
 
@@ -88,20 +92,13 @@ my-wiki/
 ```bash
 cd "你的 wiki 项目目录"
 
-# 创建运行时目录
-mkdir -p raw/articles raw/papers raw/chats raw/assets
-mkdir -p wiki _digest _proposals _lint
-
 # 初始化 Git
-git init
+git init -b main
 git add .
-git commit -m "init: implementation pack"
+git commit -m "init: LLM Wiki"
 ```
 
-用 Obsidian 打开项目根目录作为 Vault。右侧栏 pin 三个文件：
-- `_digest/latest.md`
-- `_lint/latest-report.md`
-- `_log.md`
+用 Obsidian 打开项目根目录作为 Vault。侧栏 pin `index.md` 和 `log.md`。
 
 启动 Claude Code，第一次投喂：
 
@@ -109,7 +106,7 @@ git commit -m "init: implementation pack"
 /ingest raw/articles/你的文章.md
 ```
 
-切到 Obsidian，`_digest/latest.md` 已自动刷新，`wiki/_index.md` 已按 cluster 组织好。
+切到 Obsidian，`index.md` 已按 cluster 组织好知识库目录。
 
 ---
 
@@ -121,7 +118,7 @@ git commit -m "init: implementation pack"
   → /ingest propose raw/articles/xxx.md       # 重要素材
   → 扫一眼 _proposals/{slug}.md
   → /ingest apply {slug}                       # 确认后执行
-  → 切到 Obsidian 看 latest.md
+  → 切到 Obsidian 看 index.md 更新
 
 或者（信任模式）：
   → /ingest raw/articles/xxx.md                # 一键完成
@@ -146,11 +143,11 @@ git commit -m "init: implementation pack"
 | 概念页 | `concept` | `/ingest` 从 raw 提取 | 页面级必填 | — |
 | 综合页 | `synthesis` | `/query save` 或默认模式回写 | 固定 `[]` | ≥1 条 wiki 路径 |
 
-两种页面在 `wiki/_index.md` 中分区展示，Graph View 中可通过 frontmatter 字段区分。
+两种页面在 `index.md` 中分区展示，Graph View（filter: `path:wiki`）中通过 frontmatter 字段区分。
 
 ---
 
-## 文档
+## 文档（dev 项目内，不在子库中）
 
 - [CLAUDE.md](.claude/CLAUDE.md) — 系统规则（LLM 每次启动自动加载）
 - [使用手册](docs/usage-guide.md) — 详细使用流程与素材准备
@@ -166,7 +163,7 @@ git commit -m "init: implementation pack"
 4. **B-3** 绝不编造无来源内容
 5. **B-4** 绝不自动合并/删除页面，绝不自动 apply proposal
 6. **B-5** 绝不写业务代码
-7. **B-6** 绝不修改 `.claude/` / `templates/` / `docs/`
-8. **B-7** `_log.md` 只追加，绝不重写
+7. **B-6** 绝不修改 `.claude/` / `.templates/`
+8. **B-7** `log.md` 只追加，绝不重写
 
 详见 `.claude/CLAUDE.md` §5。

@@ -4,7 +4,7 @@
 |---------|--------|------|
 | `/query "<question>"` | default | 回答 + 询问「是否归档为 synthesis 页面？」 |
 | `/query save "<question>"` | save | 回答并强制归档为 synthesis 页面 |
-| `/query ephemeral "<question>"` | ephemeral | 只回答不落盘，不写 `_log.md` |
+| `/query ephemeral "<question>"` | ephemeral | 只回答不落盘，不写 `log.md` |
 
 所有模式的回答都只基于 `wiki/` 内容（wiki-grounded），绝不使用外部知识，绝不引用 raw/ 文件。
 
@@ -95,7 +95,7 @@
 
 ### Mode Ephemeral
 
-20. 回答已打印。**完全不落盘**：不追加 `_log.md`、不生成 synthesis、不 git commit。
+20. 回答已打印。**完全不落盘**：不追加 `log.md`、不生成 synthesis、不 git commit。
 21. PRINT "(ephemeral: 本次查询未被记录)"。
 22. STOP。
 
@@ -133,7 +133,7 @@
     - 对比类 → `{A}-vs-{B}.md`
     - 分析类 → `{Topic}-Analysis.md` 或 `{Topic-主要角度}-分析.md`
     - 避免与 concept 页面重名（如重名加 `-Synthesis` 后缀）
-29. 按 `templates/synthesis-page.md` 结构 COMPOSE 内容：
+29. 按 `.templates/synthesis-page.md` 结构 COMPOSE 内容：
     - frontmatter：page_type: synthesis，status: mature，source_coverage: 1.0，source_anchors: []，cites: [...relevant pages...]，generated_from_query: question，clusters: [相关 cluster]
     - H1 = title
     - TL;DR（2-3 句）
@@ -142,11 +142,11 @@
     - 延伸问题（可选）
 30. WRITE `wiki/{Synthesis-Page-Name}.md`。
 31. 在 cites 中涉及的 concept 页面添加反向链接提示（在「与其他概念的关系」section 末尾追加一行 `- 被综合页 [[{Synthesis-Page}]] 引用`）。
-32. 重建 `wiki/_index.md`（per CLAUDE.md §2.6）。
+32. 重建 `index.md`（per CLAUDE.md §2.6）。
 
-### 追加 `_log.md`
+### 追加 `log.md`
 
-33. IF `_log.md` 不存在 → CREATE 并写入 `# LLM Wiki · 事件时间线\n`。
+33. IF `log.md` 不存在 → CREATE 并写入 `# LLM Wiki · 事件时间线\n`。
 34. APPEND：
     - Mode Save：
       ```
@@ -159,7 +159,7 @@
 
 ### Git Commit
 
-35. `git add wiki/{Synthesis-Page-Name}.md wiki/_index.md {cites 涉及的被追加反向链接的页面} _log.md`
+35. `git add wiki/{Synthesis-Page-Name}.md index.md {cites 涉及的被追加反向链接的页面} log.md`
 36. `git commit -m "query: save \"{question 截断 40 字}\""`
 37. PRINT：
     ```
@@ -174,13 +174,13 @@
 
 ## Step 7: 不归档但记录 log（Mode Default-[2]）
 
-39. APPEND `_log.md`：
+39. APPEND `log.md`：
     ```
     ## [YYYY-MM-DD HH:MM] query:default-skipped | "{question 截断 40 字}" | (user chose not to archive)
     ```
-40. `git add _log.md`
+40. `git add log.md`
 41. `git commit -m "log: query \"{question 截断 40 字}\""`
-42. PRINT "📓 已记录到 _log.md，未生成 synthesis 页面。"
+42. PRINT "📓 已记录到 log.md，未生成 synthesis 页面。"
 43. STOP。
 
 ---
@@ -195,7 +195,7 @@
 
 ## 附：log 追加规则（per CLAUDE.md §11）
 
-- `_log.md` 只追加，绝不重写或删除已有行（B-7）
+- `log.md` 只追加，绝不重写或删除已有行（B-7）
 - Mode Ephemeral 和 Default-[3] 完全不写 log
 - Mode Save、Default-[1]、Default-[2] 都写一行 log
 - log 行的 `event-kind` 必须在 §11.3 枚举之内

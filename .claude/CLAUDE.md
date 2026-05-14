@@ -14,44 +14,57 @@
 
 ## §1 目录结构与权限
 
+### §1.1 用户可见层（知识库本体）
+
+这些是用户日常看到和使用的——在 Obsidian File Explorer 中只显示这 4 项：
+
 ```
 项目根/
-├── raw/                  # 用户投喂的原始素材
+├── index.md              # 知识库索引（前门，按 clusters 分组）
+├── log.md                # 事件时间线（append-only，grep 友好）
+├── raw/                  # 用户投喂的原始素材（只读）
 │   ├── articles/
 │   ├── papers/
 │   ├── chats/
 │   └── assets/           # 仅存附件，不参与 ingest
-├── wiki/                 # LLM 生成的知识页面
-│   └── _index.md         # 自动生成的知识库索引页（按 clusters 分组）
-├── _digest/              # Ingest 变更报告
-│   └── latest.md         # 永远是最新一次（Obsidian pin）
-├── _proposals/           # Ingest propose 阶段产物
-│   └── {date}-{slug}.md  # 未 apply 前保留 status: draft
-├── _lint/                # 体检报告
-│   └── latest-report.md  # 永远是最新一次（Obsidian pin）
-├── _log.md               # 全局事件时间线（append-only，grep 友好）
-├── .claude/              # 系统配置（只读）
+└── wiki/                 # 知识页面（LLM 生成和维护）
+```
+
+### §1.2 系统层（园丁工具，Obsidian 不可见）
+
+这些目录以 `.` 开头，Obsidian 默认隐藏。它们存储 LLM 的工作产物和配置：
+
+```
+项目根/
+├── .claude/              # 系统规则 + 命令（只读）
 │   ├── CLAUDE.md
 │   └── commands/
-├── templates/            # 参考模板（只读）
-├── docs/                 # 项目文档（只读）
+├── .templates/           # 参考模板（只读）
+├── .digest/              # Ingest 变更报告
+│   └── latest.md         # 覆盖写入（Obsidian pin 不适用）
+├── .proposals/           # Ingest propose 阶段产物
+│   └── {date}-{slug}.md
+├── .lint/                # 体检报告
+│   └── latest-report.md
 └── .git/
 ```
 
-权限矩阵：
+> **Obsidian 配置**：Graph View 使用 filter `path:wiki` 只展示知识网络。用户打开 Obsidian 只看到 index.md、log.md、raw/、wiki/ 四行。园丁工具全部隐藏。
 
-| 目录 | LLM 权限 | 说明 |
-|------|----------|------|
+### §1.3 权限矩阵
+
+| 目录/文件 | LLM 权限 | 说明 |
+|-----------|----------|------|
 | `raw/` | **只读** | 绝不创建、修改、删除 raw/ 下任何文件 |
 | `raw/assets/` | **只读** | 仅存附件，不对其执行 ingest |
-| `wiki/` | **读写** | 所有知识页面（含 synthesis）在此生成和更新 |
-| `_digest/` | **读写** | ingest 后写入变更报告 |
-| `_proposals/` | **读写** | propose 阶段产物；apply 后更新 status |
-| `_lint/` | **读写** | lint 后写入体检报告 |
-| `_log.md` | **追加** | 所有命令执行末尾追加一行；**绝不重写或删除已有行** |
+| `wiki/` | **读写** | 所有知识页面（concept + synthesis）在此生成和更新 |
+| `index.md` | **读写** | 每次 ingest/lint 后全量重写 |
+| `log.md` | **追加** | 命令执行末尾追加一行；**绝不重写或删除已有行** |
+| `.digest/` | **读写** | ingest 后写入变更报告 |
+| `.proposals/` | **读写** | propose 阶段产物；apply 后更新 status |
+| `.lint/` | **读写** | lint 后写入体检报告 |
 | `.claude/` | **只读** | 系统配置，不可修改 |
-| `templates/` | **只读** | 参考模板，不可修改 |
-| `docs/` | **只读** | 项目文档，不可修改 |
+| `.templates/` | **只读** | 参考模板，不可修改 |
 
 ---
 
@@ -195,15 +208,15 @@ updated: 2026-04-25                        # 更新日期（必填，每次写�
 - 绝不链接到不存在的页面——如果要链接，至少先创建 bud
 - synthesis 页面的 `cites` 列表不算双向链接（cites 是单向引用）
 
-### §2.6 索引页 `wiki/_index.md`
+### §2.6 索引页 `index.md`（项目根）
 
 - 每次 `/ingest apply`、`/ingest <file>`（quick）、`/lint` 执行后自动重新生成（`/ingest propose` 不改 wiki，也不重写索引）
 - 按 **cluster 分组**，cluster 内按 status 降序（🌳→🌿→🌱），同 status 内按字母排序
 - synthesis 页面单独集中在文末「🔗 综合页（Synthesis）」章节
 - 每个条目格式：`- {图标} [[Page-Title]] — {一句话定义}`
 - 末尾附带统计行：总页面数、各 status 计数、synthesis 页面数
-- `_index.md` 是自动生成文件，每次全量覆盖，不做增量追加
-- `_index.md` 不计入 lint 的孤岛检测（它链接所有页面但不期望被反向链接）
+- `index.md` 是自动生成文件，每次全量覆盖，不做增量追加
+- `index.md` 不计入 lint 的孤岛检测（它链接所有页面但不期望被反向链接）
 
 ### §2.7 断言级脚注（mature 页面推荐）
 
@@ -275,26 +288,26 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 - 每次 `/ingest <file>`（quick）或 `/ingest apply` 产生**一个** commit
   - message 格式：`ingest: {source-filename}` 或 `ingest: apply {proposal-slug}`
   - 多文件：`ingest: {file1}, {file2}`
-  - commit 包含 wiki 变更 + digest 文件 + `_log.md` 追加 + `wiki/_index.md` 重写
+  - commit 包含 wiki 变更 + `.digest/` 文件 + `log.md` 追加 + `index.md` 重写
 - 每次 `/ingest propose` 产生**一个** commit
   - message 格式：`propose: {source-filename}`
-  - commit 包含 `_proposals/{slug}.md` + `_log.md` 追加
-  - 不触碰 wiki/ 或 _digest/
+  - commit 包含 `.proposals/{slug}.md` + `log.md` 追加
+  - 不触碰 wiki/ 或 .digest/
 - 每次 `/query save` 或默认模式（用户选择归档）产生**一个** commit
   - message 格式：`query: save "{question 截断 40 字}"`
-  - commit 包含新 synthesis 页面 + `_index.md` + `_log.md` 追加
+  - commit 包含新 synthesis 页面 + `index.md` + `log.md` 追加
 - 每次 `/query ephemeral` 或默认模式（用户选择不归档）**不产生** commit
-  - 但仍追加 `_log.md`？否。ephemeral 完全不落盘
-  - 默认模式被用户拒绝归档 → 仅追加一行 `_log.md`，单独 commit：`log: query ephemeral`
+  - 但仍追加 `log.md`？否。ephemeral 完全不落盘
+  - 默认模式被用户拒绝归档 → 仅追加一行 `log.md`，单独 commit：`log: query ephemeral`
 - 每次 `/lint` 产生**一个** commit
   - message 格式：`lint: {level} {YYYY-MM-DD}`（level 为 quick/standard/deep）
-  - commit 包含 _lint 报告 + `_index.md` 重写 + `_log.md` 追加
+  - commit 包含 `.lint/` 报告 + `index.md` 重写 + `log.md` 追加
 
 ### §4.2 通用规则
 
 - **禁止空 commit**：如果命令未产生任何文件变化，输出 "⚠️ No changes to commit" 并跳过
 - 使用 `git add` 显式指定文件路径，**不使用** `git add -A` 或 `git add .`
-- 只 stage `wiki/`、`_digest/`、`_proposals/`、`_lint/`、`_log.md` 下的文件，绝不 stage `raw/` 或 `.claude/`
+- 只 stage `wiki/`、`.digest/`、`.proposals/`、`.lint/`、`index.md`、`log.md` 下的文件，绝不 stage `raw/` 或 `.claude/`
 
 ---
 
@@ -303,13 +316,13 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 以下规则不可违反，无例外：
 
 1. **B-1a 外部信息不得入 wiki**：绝不把 raw/ 之外的任何信息（URL、API、网络、模型自身知识）写入 wiki/ 页面。wiki 的每一段内容必须能追溯到 raw/ 或 wiki/（synthesis 引用 concept 的情况）。
-2. **B-1b Lint 可建议方向但不写入**：Lint deep 档可以在 `_lint/` 报告中建议「该投喂什么素材、搜什么关键词」，但这些建议**绝不能**进入 wiki/ 任何页面。建议是导航灯，不是知识源。
+2. **B-1b Lint 可建议方向但不写入**：Lint deep 档可以在 `.lint/` 报告中建议「该投喂什么素材、搜什么关键词」，但这些建议**绝不能**进入 wiki/ 任何页面。建议是导航灯，不是知识源。
 3. **B-2 不修改 Raw 层**：绝不创建、修改、删除 raw/ 下任何文件。
 4. **B-3 不编造无来源内容**：Wiki concept 页面的主要内容必须能对应 `source_anchors`；synthesis 页面的主要内容必须能对应 `cites` 中的页面。信息不足时创建 bud 或拒绝回答，不要硬写。
 5. **B-4 不替代用户判断**：绝不自动合并或删除 Wiki 页面，绝不自动 apply proposal。在 lint 或 proposal 中标记，让用户决定。
 6. **B-5 不写代码**：绝不创建 Python / TypeScript / 脚本 / 插件等业务代码文件。
-7. **B-6 不修改系统文件**：绝不修改 `.claude/`、`templates/`、`docs/` 下的文件。
-8. **B-7 `_log.md` 只追加**：绝不重写或删除 `_log.md` 中的历史行；每次只在文件末尾追加一行。
+7. **B-6 不修改系统文件**：绝不修改 `.claude/`、`.templates/` 下的文件。dev 项目的 `docs/`、`scripts/` 不在子库中存在，无需关心。
+8. **B-7 `log.md` 只追加**：绝不重写或删除 `log.md` 中的历史行；每次只在文件末尾追加一行。
 
 如果不确定某个操作是否违反红线，**停下来告知用户**，不要继续。
 
@@ -324,11 +337,11 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 | 调用形式 | 子模式 | 说明 |
 |---------|--------|------|
 | `/ingest <filepath>` | quick | 默认：一键流程，propose + apply 合并 |
-| `/ingest propose <filepath>` | propose | 只生成 `_proposals/{slug}.md`，不改 wiki |
+| `/ingest propose <filepath>` | propose | 只生成 `.proposals/{slug}.md`，不改 wiki |
 | `/ingest apply <proposal-slug>` | apply | 读取已有 proposal 执行写入 |
 | `/query "<question>"` | default | 回答后询问「是否归档为 synthesis 页面？」 |
 | `/query save "<question>"` | save | 回答并强制归档为 synthesis 页面 |
-| `/query ephemeral "<question>"` | ephemeral | 只回答不落盘，不写 _log.md |
+| `/query ephemeral "<question>"` | ephemeral | 只回答不落盘，不写 log.md |
 | `/lint` | standard | 默认：孤岛 + 来源缺失 + 重复候选 + 死链 + 花苞绽放 |
 | `/lint quick` | quick | 仅孤岛 + 来源缺失 + 花苞绽放 |
 | `/lint deep` | deep | standard + 矛盾检测 + 过时声明 + 覆盖缺口 + 搜索建议 |
@@ -342,7 +355,7 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 ### §6.3 命令是唯一写入路径
 
 - 命令是修改知识库状态的**唯一方式**。
-- 不要在命令执行之外修改 wiki/、_digest/、_proposals/、_lint/、_log.md。
+- 不要在命令执行之外修改 wiki/、.digest/、.proposals/、.lint/、index.md、log.md。
 - 用户可以手工编辑 wiki/ 下的页面（这是 B-4 允许的用户判断），但 LLM 不得在命令外替用户改。
 
 ---
@@ -358,7 +371,7 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 | Status 枚举值 | 英文（bud / growing / mature） |
 | page_type 枚举值 | 英文（concept / synthesis） |
 | Digest / Lint / Proposal 报告正文 | 中文 |
-| `_log.md` 条目 | 英文（grep 友好） |
+| `log.md` 条目 | 英文（grep 友好） |
 | 终端输出 | 中文 + 英文标识符 |
 | 概念名（title） | 专业术语英文（Transformer、RAG 等），非术语可中文 |
 
@@ -374,11 +387,13 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 
 ### Cluster 归属
 
-- 每个概念页必须归入 ≥1 个 cluster，最多 3 个
+- 每个概念页必须归入 ≥1 个 cluster，最多 2 个
+- **默认单 cluster**：只在概念确实跨域时才用双 cluster。双 cluster 应占页面总数的 20% 以下
+- bud 页面**只能单 cluster**（信息不足的概念不应同时属于多个领域）
 - cluster 名用英文 Kebab-Case，优先使用已存在的 cluster 名（通过扫描已有页面 frontmatter 获取）
-- 新 cluster 只在现有 cluster 无法容纳新概念时创建
+- 新 cluster 只在现有 cluster 确实无法容纳新概念时创建——创建前先确认是否可归入已有 cluster
 - 常见 cluster 示例（非强制）：`LLM-Infrastructure`、`Retrieval`、`Training`、`Evaluation`、`Alignment`、`Agents`、`Multimodal`、`Deployment`
-- 一个概念归多个 cluster 是常态，不是例外
+- 避免创建语义重叠的 cluster（如 Context-Engineering 和 Agent-Engineering 共享过多页面时，应合并）
 
 ### source_coverage 估算指南
 
@@ -414,14 +429,14 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 - `/ingest` quick 或 apply 模式完成后自动生成；`/ingest propose` 不生成 Digest（生成的是 Proposal）
 - Digest 是**知识库变化报告**，不是文章摘要
 - 写入两个文件（内容一致）：
-  - `_digest/{YYYY-MM-DD}-{source-slug}.md`（归档）
-  - `_digest/latest.md`（覆盖写入，Obsidian pin）
+  - `.digest/{YYYY-MM-DD}-{source-slug}.md`（归档）
+  - `.digest/latest.md`（覆盖写入）
 - source-slug 命名规则：
   - 单文件：从文件名派生，小写，连字符，去扩展名。如 `rag-survey-2026`
   - 多文件（2 个）：`{slug1}-and-{slug2}`。如 `rag-survey-and-kv-cache`
   - 多文件（3+ 个）：`{slug1}-and-{N-1}-more`。如 `rag-survey-and-2-more`
   - apply 模式：直接沿用 proposal 的 slug
-- 内容结构见 `templates/digest.md`
+- 内容结构见 `.templates/digest.md`
 - 必须包含：投喂了什么、新页面、更新页面、新连接、花苞动态、知识库快照（before→after）
 - apply 模式的 Digest 额外包含「与 Proposal 的差异」section（如果 apply 过程中 LLM 发现需要偏离原 proposal）
 
@@ -467,20 +482,20 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 ### §10.4 输出
 
 - 写入两个文件（内容一致）：
-  - `_lint/{YYYY-MM-DD}-{level}.md`（归档，level 为 quick/standard/deep）
-  - `_lint/latest-report.md`（覆盖写入，Obsidian pin）
-- 内容结构见 `templates/lint-report.md`
+  - `.lint/{YYYY-MM-DD}-{level}.md`（归档，level 为 quick/standard/deep）
+  - `.lint/latest-report.md`（覆盖写入）
+- 内容结构见 `.templates/lint-report.md`
 - 附加输出：知识库统计（总页面数、各 status 分布、synthesis 页面数、cluster 分布）
 
 ---
 
-## §11 `_log.md` 规范
+## §11 `log.md` 规范
 
-`_log.md` 是知识库的 chronological timeline——一个只追加的事件流，任何命令执行末尾都追加一行。
+`log.md` 是知识库的 chronological timeline——一个只追加的事件流，任何命令执行末尾都追加一行。
 
 ### §11.1 文件位置与初始化
 
-- 路径：项目根 `_log.md`（注意不在 `_lint/` 或 `_digest/` 下，是独立文件）
+- 路径：项目根 `log.md`（注意不在 `.lint/` 或 `.digest/` 下，是独立文件）
 - 首次运行任何命令时若文件不存在则创建，含一行初始化头：
   ```
   # LLM Wiki · 事件时间线
@@ -494,7 +509,7 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 ## [2026-05-11 10:23] ingest:quick | rag-survey-2026.md | +3 pages, +6 links, +2 buds
 ## [2026-05-11 15:40] query:save | "chunk strategy 影响" | → Chunk-Strategy-Analysis.md
 ## [2026-05-11 22:10] lint:standard | all wiki | 2 islands, 1 duplicate, 0 missing-source
-## [2026-05-12 09:15] ingest:propose | lewis-2020.md | → _proposals/2026-05-12-lewis-2020.md
+## [2026-05-12 09:15] ingest:propose | lewis-2020.md | → .proposals/2026-05-12-lewis-2020.md
 ## [2026-05-12 09:30] ingest:apply | 2026-05-12-lewis-2020 | +1 page, +4 links
 ## [2026-05-12 14:00] query:ephemeral-log | "什么是 MoE" | (not archived)
 ```
@@ -510,9 +525,9 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 - 只追加，**绝不重写或删除**已有行（B-7 红线）
 - 每行写完后立即 git add；append 操作并入同一命令的主 commit 中（不要单独 commit 一行 log）
 - grep 模式示例：
-  - `grep "^## \[" _log.md | tail -10` → 最近 10 条
-  - `grep "ingest:" _log.md | wc -l` → 累计投喂命令数
-  - `grep "query:save" _log.md` → 所有归档的 synthesis
+  - `grep "^## \[" log.md | tail -10` → 最近 10 条
+  - `grep "ingest:" log.md | wc -l` → 累计投喂命令数
+  - `grep "query:save" log.md` → 所有归档的 synthesis
 
 ---
 
@@ -520,10 +535,10 @@ synthesis 页面是 `/query` 默认或 `/query save` 回写产生的综合页，
 
 | 模板 | 用途 | 命令引用 |
 |------|------|---------|
-| `templates/wiki-page.md` | concept 页面参考模板 | ingest |
-| `templates/synthesis-page.md` | synthesis 页面参考模板 | query |
-| `templates/proposal.md` | Ingest propose 产物模板 | ingest propose |
-| `templates/digest.md` | Ingest 变更报告模板 | ingest apply / quick |
-| `templates/lint-report.md` | Lint 体检报告模板（含三档切换） | lint |
+| `.templates/wiki-page.md` | concept 页面参考模板 | ingest |
+| `.templates/synthesis-page.md` | synthesis 页面参考模板 | query |
+| `.templates/proposal.md` | Ingest propose 产物模板 | ingest propose |
+| `.templates/digest.md` | Ingest 变更报告模板 | ingest apply / quick |
+| `.templates/lint-report.md` | Lint 体检报告模板（含三档切换） | lint |
 
 模板是参考结构，命令执行时应按模板生成文件，但允许根据实际情况增减 section。

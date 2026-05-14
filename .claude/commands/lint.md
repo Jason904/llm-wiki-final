@@ -21,7 +21,7 @@
 
 ## Step 1: 收集数据（所有档通用）
 
-7. LIST wiki/ 下所有 .md 文件（含 `_index.md`，但后续检查会排除它）。
+7. LIST wiki/ 下所有 .md 文件（不含 `index.md`，index 不计入任何检查）。
 8. 对每个文件，READ 并 PARSE：
    - frontmatter：title、aliases、page_type、status、clusters、source_anchors、cites、generated_from_query、updated
    - 正文：提取所有 `[[wikilink]]` 目标、脚注 `[^id]`
@@ -41,7 +41,7 @@
    }
    ```
 10. COMPUTE 统计：
-    - total_pages、count_by_status（mature/growing/bud）、count_by_page_type（concept/synthesis）
+    - total_pages（不含 index.md）、count_by_status（mature/growing/bud）、count_by_page_type（concept/synthesis）
     - cluster 分布：每个 cluster 的页面数和各 status 计数
 
 ---
@@ -50,8 +50,8 @@
 
 ### Check 1: 孤岛检测
 
-11. 对索引中每个页面（排除 `_index.md`）：
-    - IF incoming_links 为空（`_index.md` 的链接不计入）→ 加入 orphans 列表，记录 outgoing link 数和所在 cluster。
+11. 对索引中每个页面（排除 `index.md`）：
+    - IF incoming_links 为空（`index.md` 的链接不计入）→ 加入 orphans 列表，记录 outgoing link 数和所在 cluster。
 
 ### Check 2: 来源缺失
 
@@ -186,33 +186,33 @@
 
 29. 末尾：
     ```
-    ✅ Lint complete ({level}). Report saved to _lint/{YYYY-MM-DD}-{level}.md
+    ✅ Lint complete ({level}). Report saved to .lint/{YYYY-MM-DD}-{level}.md
     ```
 
 ---
 
 ## Step 6: 写入报告文件
 
-30. 按 `templates/lint-report.md` 结构 COMPOSE 报告，根据 level 保留对应 section。
-31. WRITE `_lint/{YYYY-MM-DD}-{level}.md`。
-32. WRITE `_lint/latest-report.md`（覆盖，与归档文件内容一致）。
+30. 按 `.templates/lint-report.md` 结构 COMPOSE 报告，根据 level 保留对应 section。
+31. WRITE `.lint/{YYYY-MM-DD}-{level}.md`。
+32. WRITE `.lint/latest-report.md`（覆盖，与归档文件内容一致）。
 
 ---
 
-## Step 7: 更新 `wiki/_index.md`
+## Step 7: 更新 `index.md`
 
-33. 复用 Step 1 收集的数据，按 CLAUDE.md §2.6 规范重新生成 `wiki/_index.md`：
+33. 复用 Step 1 收集的数据，按 CLAUDE.md §2.6 规范重新生成 `index.md`：
     - 按 cluster 分组
     - cluster 内按 status 降序，同 status 内按字母排序
     - synthesis 页面单独集中在文末「🔗 综合页（Synthesis）」章节
     - 统计行：总页面 / 各 status / synthesis 数 / cluster 数
-34. 全量覆盖 `wiki/_index.md`。
+34. 全量覆盖 `index.md`。
 
 ---
 
-## Step 8: 追加 `_log.md`
+## Step 8: 追加 `log.md`
 
-35. IF `_log.md` 不存在 → CREATE 并写入 `# LLM Wiki · 事件时间线\n`。
+35. IF `log.md` 不存在 → CREATE 并写入 `# LLM Wiki · 事件时间线\n`。
 36. APPEND 一行（per CLAUDE.md §11）：
     ```
     ## [YYYY-MM-DD HH:MM] lint:{level} | all wiki | {核心发现摘要}
@@ -225,12 +225,12 @@
 
 ## Step 9: Git Commit
 
-37. `git add _lint/{YYYY-MM-DD}-{level}.md _lint/latest-report.md wiki/_index.md _log.md`
+37. `git add .lint/{YYYY-MM-DD}-{level}.md .lint/latest-report.md index.md log.md`
 38. IF 文件无实质变化（如同一天同档次重复运行且 wiki 未变）→ PRINT "⚠️ No changes to commit" 并跳过 commit（回滚 log 追加以保持一致）。
 39. ELSE `git commit -m "lint: {level} {YYYY-MM-DD}"`
 40. PRINT：
     ```
     ✅ Lint commit: {short-hash}
-       📊 Report: _lint/{YYYY-MM-DD}-{level}.md
-       📚 Index refreshed: wiki/_index.md
+       📊 Report: .lint/{YYYY-MM-DD}-{level}.md
+       📚 Index refreshed: index.md
     ```

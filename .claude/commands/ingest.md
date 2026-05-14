@@ -3,10 +3,10 @@
 | 调用形式 | 子模式 | 产物 |
 |---------|--------|------|
 | `/ingest <filepath>` | quick | 一键完成 propose + apply，直接写入 wiki + digest |
-| `/ingest propose <filepath>` | propose | 只生成 `_proposals/{slug}.md`，不改 wiki |
+| `/ingest propose <filepath>` | propose | 只生成 `.proposals/{slug}.md`，不改 wiki |
 | `/ingest apply <proposal-slug>` | apply | 读取 proposal 执行写入 + digest |
 
-所有模式结束前都追加 `_log.md`，并按 §4.1 规则 commit。
+所有模式结束前都追加 `log.md`，并按 §4.1 规则 commit。
 
 ---
 
@@ -57,24 +57,24 @@
 18. DERIVE proposal_slug（per CLAUDE.md §9 source-slug 规则）：
     - 单文件：`{YYYY-MM-DD}-{source-slug}`。如 `2026-05-11-rag-survey-2026`
     - 多文件：沿用 §9 的多文件 slug 规则前缀日期
-19. 按 `templates/proposal.md` 结构 COMPOSE proposal 内容，`status: draft`。
-20. WRITE `_proposals/{proposal_slug}.md`。
+19. 按 `.templates/proposal.md` 结构 COMPOSE proposal 内容，`status: draft`。
+20. WRITE `.proposals/{proposal_slug}.md`。
 
-### A.5 追加 `_log.md`
+### A.5 追加 `log.md`
 
-21. IF `_log.md` 不存在 → 先 CREATE，写入 `# LLM Wiki · 事件时间线\n`。
+21. IF `log.md` 不存在 → 先 CREATE，写入 `# LLM Wiki · 事件时间线\n`。
 22. APPEND 一行（per CLAUDE.md §11.2）：
     ```
-    ## [YYYY-MM-DD HH:MM] ingest:propose | {source-filename-list} | → _proposals/{proposal_slug}.md
+    ## [YYYY-MM-DD HH:MM] ingest:propose | {source-filename-list} | → .proposals/{proposal_slug}.md
     ```
 
 ### A.6 Git Commit
 
-23. `git add _proposals/{proposal_slug}.md _log.md`
+23. `git add .proposals/{proposal_slug}.md log.md`
 24. `git commit -m "propose: {source-filename}"`
 25. PRINT 汇总：
     ```
-    📋 Proposal 已生成：_proposals/{proposal_slug}.md
+    📋 Proposal 已生成：.proposals/{proposal_slug}.md
        - {new_count} 新页面 · {update_count} 更新 · {bud_count} 新花苞
        - {contradiction_count} 个潜在矛盾 · {question_count} 个待确认
     
@@ -89,7 +89,7 @@
 ### B.1 前置检查
 
 26. SET proposal_slug = 剩余参数。
-27. VERIFY `_proposals/{proposal_slug}.md` 存在。不存在 → PRINT 错误并 STOP。
+27. VERIFY `.proposals/{proposal_slug}.md` 存在。不存在 → PRINT 错误并 STOP。
 28. READ proposal 文件。CHECK frontmatter `status`：
     - IF `applied` → PRINT "⚠️ 该 proposal 已被 apply，跳过。" STOP。
     - IF `discarded` → PRINT "⚠️ 该 proposal 已被标记为放弃。要重做请删除文件或改为 draft。" STOP。
@@ -126,13 +126,13 @@
 ### B.3 Digest
 
 37. SNAPSHOT 当前 wiki/ 状态（"after"）。
-38. 按 `templates/digest.md` 结构 COMPOSE digest 内容，额外包含「与 Proposal 的差异」section（说明 apply 实际执行偏离 proposal 的地方；无偏离则写「完全按 proposal 执行」）。
-39. WRITE `_digest/{proposal_slug 去掉日期前缀}.md` → 实际为 `_digest/{YYYY-MM-DD}-{source-slug}.md`，复用 proposal 的 slug 主体。
-40. WRITE `_digest/latest.md`（覆盖）。
+38. 按 `.templates/digest.md` 结构 COMPOSE digest 内容，额外包含「与 Proposal 的差异」section（说明 apply 实际执行偏离 proposal 的地方；无偏离则写「完全按 proposal 执行」）。
+39. WRITE `.digest/{proposal_slug 去掉日期前缀}.md` → 实际为 `.digest/{YYYY-MM-DD}-{source-slug}.md`，复用 proposal 的 slug 主体。
+40. WRITE `.digest/latest.md`（覆盖）。
 
-### B.4 更新 `wiki/_index.md`
+### B.4 更新 `index.md`
 
-41. 重建 `wiki/_index.md`（per CLAUDE.md §2.6）：按 cluster 分组，cluster 内 status 降序排列，synthesis 页面单独集中在文末。
+41. 重建 `index.md`（per CLAUDE.md §2.6）：按 cluster 分组，cluster 内 status 降序排列，synthesis 页面单独集中在文末。
 
 ### B.5 标记 Proposal 为 applied
 
@@ -150,7 +150,7 @@
     - 与预测差异：{无 / 具体说明}
     ```
 
-### B.6 追加 `_log.md`
+### B.6 追加 `log.md`
 
 44. APPEND：
     ```
@@ -159,7 +159,7 @@
 
 ### B.7 Git Commit
 
-45. `git add wiki/ _digest/{...}.md _digest/latest.md _proposals/{proposal_slug}.md _log.md`
+45. `git add wiki/ .digest/{...}.md .digest/latest.md .proposals/{proposal_slug}.md log.md`
 46. IF 无变化（罕见，proposal 可能完全不需要执行）→ PRINT "⚠️ No changes to commit" 并跳过 commit。
 47. ELSE `git commit -m "ingest: apply {proposal_slug}"`
 48. PRINT 汇总（同 Mode C 完成输出格式）
@@ -201,15 +201,15 @@
 ### C.6 Digest 生成
 
 60. SNAPSHOT wiki/（"after"）。
-61. 按 `templates/digest.md` COMPOSE（quick 模式不含「与 Proposal 的差异」section）。
+61. 按 `.templates/digest.md` COMPOSE（quick 模式不含「与 Proposal 的差异」section）。
 62. DERIVE source-slug（per CLAUDE.md §9）。
-63. WRITE `_digest/{YYYY-MM-DD}-{source-slug}.md` 和 `_digest/latest.md`。
+63. WRITE `.digest/{YYYY-MM-DD}-{source-slug}.md` 和 `.digest/latest.md`。
 
-### C.7 更新 `wiki/_index.md`
+### C.7 更新 `index.md`
 
-64. 重建 `wiki/_index.md`（per CLAUDE.md §2.6）。
+64. 重建 `index.md`（per CLAUDE.md §2.6）。
 
-### C.8 追加 `_log.md`
+### C.8 追加 `log.md`
 
 65. APPEND：
     ```
@@ -222,7 +222,7 @@
 67. IF 无变化 → PRINT "⚠️ No changes to commit" 并跳过 commit（但已追加 log，此时 log 那一行成为未提交改动；退回将 log 追加回滚）。
    - **实现细节**：如果 Step 57-C.7 全部无变化，则 Step 65 的 log 追加也回滚（删除刚追加的行），保持系统一致。
 68. IF 有变化：
-    - `git add` 显式列出所有改动：wiki/*.md（含 _index.md）、_digest/{...}.md、_digest/latest.md、_log.md。
+    - `git add` 显式列出所有改动：wiki/*.md、index.md、.digest/{...}.md、.digest/latest.md、log.md。
     - `git commit -m "ingest: {source-filename}"`
     - PRINT "✅ Git commit: {short-hash}"
 
@@ -233,8 +233,8 @@
 69. PRINT 汇总：
     ```
     ✅ Ingest complete: {new} new pages, {updated} updated, {links} links, {buds} buds
-       📬 Digest: _digest/{YYYY-MM-DD}-{source-slug}.md
-       📚 Index refreshed: wiki/_index.md
+       📬 Digest: .digest/{YYYY-MM-DD}-{source-slug}.md
+       📚 Index refreshed: index.md
        Git commit: {short-hash} "{message}"
     ```
     若无变化：
